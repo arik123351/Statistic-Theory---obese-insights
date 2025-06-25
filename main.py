@@ -1,6 +1,6 @@
 import pandas as pd
 from src.CleanData import CleanData
-from src.CheckNormal import check_normality_qq, check_normality_shapiro
+from src.CheckNormal import check_normality_qq, check_normality_shapiro_wilks
 
 df = CleanData()
 
@@ -9,6 +9,6 @@ continuous_cols = [col for col in df.columns if df[col].nunique() > 10 and col !
 
 for col in continuous_cols:
     check_normality_qq(df[col])
-    print(check_normality_shapiro(df[col]))
+    print(check_normality_shapiro_wilks(df[col]))
 
 print(df.head())

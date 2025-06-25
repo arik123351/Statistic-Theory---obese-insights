@@ -11,7 +11,7 @@ def check_normality_qq(data, title='Q-Q Plot'):
     plt.show()
 
 
-def check_normality_shapiro(data, alpha=0.05):
+def check_normality_shapiro_wilks(data, alpha=0.05):
     stat, p = stats.shapiro(data)
     is_normal = p > alpha
     conclusion = "Data looks normal (fail to reject H0)" if is_normal else "Data is not normal (reject H0)"
