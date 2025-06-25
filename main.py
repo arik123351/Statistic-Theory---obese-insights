@@ -1,16 +1,14 @@
-# This is a sample Python script.
+import pandas as pd
+from src.CleanData import CleanData
+from src.CheckNormal import check_normality_qq, check_normality_shapiro
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+df = CleanData()
 
+categorical_cols = [col for col in df.columns if df[col].nunique() <= 10 and col != "is_obese"]
+continuous_cols = [col for col in df.columns if df[col].nunique() > 10 and col != "is_obese"]
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+for col in continuous_cols:
+    check_normality_qq(df[col])
+    print(check_normality_shapiro(df[col]))
 
-
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+print(df.head())
