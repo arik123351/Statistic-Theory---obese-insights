@@ -308,6 +308,147 @@ def evaluate_feature_subgroups(df, base_feature='family_history_with_overweight'
     return results, base_model, top_5_significant
 
 
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+def plot_top_wald_statistics(top_5_significant, save_path=None):
+    """
+    Create a bar graph of the top 5 combinations with highest Wald statistics
+
+    Parameters:
+    top_5_significant: list of dictionaries from evaluate_feature_subgroups function
+    save_path: optional path to save the figure
+    """
+
+    # Extract data for plotting
+    feature_combinations = []
+    wald_stats = []
+    p_values = []
+
+    for i, result in enumerate(top_5_significant):
+        # Create short labels for the combinations
+        features_str = ', '.join(result['additional_features'][:3])  # Show first 2 features
+        # if len(result['additional_features']) > 2:
+        #     features_str += f" (+{len(result['additional_features']) - 2} more)"
+
+        feature_combinations.append(f"Combo {i + 1}:\n{features_str}")
+        wald_stats.append(result['wald_statistic'])
+        p_values.append(result['wald_p_value'])
+
+    # Create the figure with two subplots
+    fig, ax1 = plt.subplots(figsize=(12, 10))
+
+    # Colors for bars (gradient from dark to light blue)
+    colors = plt.cm.Blues(np.linspace(0.8, 0.4, len(wald_stats)))
+
+    # Top subplot: Wald Statistics
+    bars1 = ax1.bar(range(len(wald_stats)), wald_stats, color=colors,
+                    edgecolor='navy', linewidth=1.5, alpha=0.8)
+
+    ax1.set_title(
+        'Top 5 Feature Combinations by Wald Test Statistic\n(Higher values indicate stronger statistical significance)',
+        fontsize=14, fontweight='bold', pad=20)
+    ax1.set_ylabel('Wald Test Statistic (χ²)', fontsize=12, fontweight='bold')
+    ax1.set_xticks(range(len(feature_combinations)))
+    ax1.set_xticklabels(feature_combinations, rotation=45, ha='right', fontsize=10)
+    ax1.grid(axis='y', alpha=0.3, linestyle='--')
+
+    # Add value labels on bars
+    for i, (bar, stat) in enumerate(zip(bars1, wald_stats)):
+        height = bar.get_height()
+        ax1.text(bar.get_x() + bar.get_width() / 2., height + max(wald_stats) * 0.01,
+                 f'{stat:.2f}', ha='center', va='bottom', fontweight='bold', fontsize=10)
+
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Plot saved to: {save_path}")
+
+    plt.show()
+
+    # Print summary statistics
+    print("\n" + "=" * 60)
+    print("SUMMARY OF TOP 5 COMBINATIONS")
+    print("=" * 60)
+    for i, result in enumerate(top_5_significant):
+        print(f"{i + 1}. Features: {result['additional_features']}")
+        print(f"   Wald χ²: {result['wald_statistic']:.4f}")
+        print(f"   P-value: {result['wald_p_value']:.2e}")
+        print(f"   AUC Improvement: {result['auc_improvement']:+.4f}")
+        print(f"   Significant: {'Yes' if result['significant_improvement'] else 'No'}")
+        print()
+
+
+def plot_comparison_with_base(top_5_significant, save_path=None):
+    """
+    Create a comparison plot showing Wald statistics vs base model chi-square equivalent
+    """
+
+    # Extract data
+    combo_names = [f"Combo {i + 1}" for i in range(len(top_5_significant))]
+    combo_chi_squares = [result['wald_statistic'] for result in top_5_significant]
+    base_chi_squares = [result['base_chi_square_equiv'] for result in top_5_significant]
+
+    # Create the plot
+    fig, ax = plt.subplots(figsize=(12, 8))
+
+    x = np.arange(len(combo_names))
+    width = 0.35
+    for i, result in enumerate(top_5_significant):
+        # Create short labels for the combinations
+        features_str = ', '.join(result['additional_features'][:3])  # Show first 3 features
+
+    # Create bars
+    bars1 = ax.bar(x - width / 2, combo_chi_squares, width, label='Feature Combination',
+                   color='steelblue', alpha=0.8, edgecolor='navy')
+    bars2 = ax.bar(x + width / 2, base_chi_squares, width, label='Base Model (family_history only)',
+                   color='lightcoral', alpha=0.8, edgecolor='darkred')
+
+    ax.set_title(
+        'Wald Test Statistics: Feature Combinations vs Base Model\n(Higher values indicate stronger statistical significance)',
+        fontsize=14, fontweight='bold', pad=20)
+    ax.set_ylabel('Test Statistic (χ²)', fontsize=12, fontweight='bold')
+    ax.set_xlabel('Feature Combinations (Ranked by Wald Statistic)', fontsize=12, fontweight='bold')
+    ax.set_xticks(x)
+    ax.set_xticklabels(combo_names)
+    ax.legend()
+    ax.grid(axis='y', alpha=0.3, linestyle='--')
+
+    # Add value labels on bars
+    for bar in bars1:
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width() / 2., height + max(combo_chi_squares) * 0.01,
+                f'{height:.2f}', ha='center', va='bottom', fontweight='bold', fontsize=9)
+
+    for bar in bars2:
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width() / 2., height + max(base_chi_squares) * 0.01,
+                f'{height:.2f}', ha='center', va='bottom', fontweight='bold', fontsize=9)
+
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Comparison plot saved to: {save_path}")
+
+    plt.show()
+
+
+# Usage example:
+print("To create the bar graphs after running your analysis:")
+print("\n# Run your analysis first:")
+print("results, base_model, top_5_significant = evaluate_feature_subgroups(df)")
+print("\n# Then create the plots:")
+print("plot_top_wald_statistics(top_5_significant)")
+print("plot_comparison_with_base(top_5_significant)")
+print("\n# To save the plots:")
+print("plot_top_wald_statistics(top_5_significant, 'wald_statistics.png')")
+print("plot_comparison_with_base(top_5_significant, 'comparison_plot.png')")
+
+
+
 # Example usage:
 print("To run the analysis, call:")
 print("results, base_model, top_5_significant = evaluate_feature_subgroups(df)")
