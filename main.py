@@ -7,13 +7,13 @@ from src.MannWhitneyTest import mann_whitney_selected_features, print_all_signif
 
 df = CleanData()
 
-categorical_cols = [col for col in df.columns if df[col].nunique() <= 10 and col != "is_obese"]
-continuous_cols = [col for col in df.columns if df[col].nunique() > 10 and col != "is_obese"]
+categorical_cols = [col for col in df.columns if df[col].nunique() <= 30 and col != "is_obese"]
+continuous_cols = [col for col in df.columns if df[col].nunique() > 30 and col != "is_obese"]
 
 # for col in continuous_cols:
 #     check_normality_qq(df[col])
 #     print(check_normality_shapiro_wilks(df[col]))
-
+#
 # results = chi2_best_combinations_excluding_weight_family(df, max_features=4)
 # detailed_results = compare_combinations_detailed(df, top_combinations=3)
 
@@ -31,8 +31,9 @@ results = mann_whitney_selected_features(df, selected_features=selected)
 significant_groups = print_all_significant_groups(df)
 plot_mann_whitney_results(results, df)
 
-results = mann_whitney_for_family_not_obese(df, selected_features=selected)
-plot_mann_whitney_results(results, df)
+for prec in range(50, 100, 10):
+    results = mann_whitney_for_family_not_obese(df, selected_features=selected,percentile = prec)
+    plot_mann_whitney_results(results, df)
 
 results = mann_whitney_for_family_obese(df, selected_features=selected)
 plot_mann_whitney_results(results, df)

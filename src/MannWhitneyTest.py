@@ -133,21 +133,22 @@ def mann_whitney_selected_features(df,
 
 
 def mann_whitney_for_family_not_obese(df,
-                                   target='is_obese',
-                                   feature_to_split='family_history_with_overweight',
-                                   selected_features=['FAVC', 'FCVC', 'NCP', 'CAEC', 'SMOKE', 'CH2O',
-                                                        'SCC', 'FAF', 'TUE', 'CALC', 'MTRANS_Walking',
-                                                        'MTRANS_Public_Transportation', 'MTRANS_Motorbike',
-                                                        'MTRANS_Bike', 'MTRANS_Automobile'],
-                                   max_features=4,
-                                   p_threshold=0.05):
+                                      target='is_obese',
+                                      feature_to_split='family_history_with_overweight',
+                                      selected_features=['FAVC', 'FCVC', 'NCP', 'CAEC', 'SMOKE', 'CH2O',
+                                                         'SCC', 'FAF', 'TUE', 'CALC', 'MTRANS_Walking',
+                                                         'MTRANS_Public_Transportation', 'MTRANS_Motorbike',
+                                                         'MTRANS_Bike', 'MTRANS_Automobile'],
+                                      max_features=4,
+                                      p_threshold=0.05,
+                                      percentile=50):
     if selected_features is None:
         raise ValueError("You must provide a list of selected features.")
 
     results = []
 
-    # Median split value for family_history_with_overweight
-    median_val = df[feature_to_split].median()
+    # Percentile split value for family_history_with_overweight
+    percentile_val = df[feature_to_split].quantile(percentile / 100)
 
     # Define feature types for proper handling
     binary_features = ['Gender', 'FAVC', 'SMOKE', 'SCC',
@@ -179,14 +180,16 @@ def mann_whitney_for_family_not_obese(df,
                         high_risk_conditions.append(subset_df[feat] == 0)
                         low_risk_conditions.append(subset_df[feat] == 1)
                 elif feat in continuous_features:
-                    # For continuous: high risk vs low risk
-                    feat_median = subset_df[feat].median()
+                    # For continuous: high risk vs low risk using percentile
+                    feat_percentile = subset_df[feat].quantile(percentile / 100)
+                    lower = subset_df[feat].quantile(1 - percentile / 100)
+                    # print(f'feat_percentile = {feat_percentile} / max = {max(subset_df[feat])}')
                     if feat in ['NCP', 'TUE', 'CAEC', 'CALC']:
-                        high_risk_conditions.append(subset_df[feat] >= feat_median)
-                        low_risk_conditions.append(subset_df[feat] < feat_median)
+                        high_risk_conditions.append(subset_df[feat] >= feat_percentile)
+                        low_risk_conditions.append(subset_df[feat] < feat_percentile)
                     else:
-                        high_risk_conditions.append(subset_df[feat] < feat_median)
-                        low_risk_conditions.append(subset_df[feat] >= feat_median)
+                        high_risk_conditions.append(subset_df[feat] < lower)
+                        low_risk_conditions.append(subset_df[feat] >= lower)
 
             # Combine conditions (all must be true for each risk group)
             if len(high_risk_conditions) == 1:
@@ -237,13 +240,22 @@ def mann_whitney_for_family_not_obese(df,
     results_df = pd.DataFrame(results)
 
     if results_df.empty:
-        print("No significant combinations found! for if no family_history_with_overweight > low_risk_group + family_history_with_overweight")
+        print(
+            "No significant combinations found! for if no family_history_with_overweight > low_risk_group + family_history_with_overweight")
         return {
             'all_results': results_df,
             'top_5_significant': pd.DataFrame(),
             'least_5_significant': pd.DataFrame()
         }
 
+    # Sort by p-value and return top and least significant results
+    results_df = results_df.sort_values('p_value')
+
+    return {
+        'all_results': results_df,
+        'top_5_significant': results_df.head(5),
+        'least_5_significant': results_df.tail(5)
+    }
     # Sort by p-value (ascending for most significant)
     results_df = results_df.sort_values('p_value')
 
@@ -444,21 +456,9 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-def plot_mann_whitney_results(results_dict, df=None, save_plots=False, figsize=(15, 12)):
-    """
-    Create comprehensive visualizations for Mann-Whitney U test results
-
-    Parameters:
-    -----------
-    results_dict : dict
-        Dictionary returned by mann_whitney_selected_features function
-    df : pd.DataFrame, optional
-        Original dataframe for additional context plots
-    save_plots : bool
-        Whether to save plots to files
-    figsize : tuple
-        Figure size for the plots
-    """
+def plot_mann_whitney_results(results_dict, df=None, save_plots=False, figsize=(12, 8)):
+    import matplotlib.pyplot as plt
+    import seaborn as sns
 
     # Extract results
     all_results = results_dict['all_results']
@@ -471,72 +471,8 @@ def plot_mann_whitney_results(results_dict, df=None, save_plots=False, figsize=(
     plt.style.use('default')
     sns.set_palette("husl")
 
-    # Create figure with multiple subplots
-    fig = plt.figure(figsize=figsize)
-
-    # 1. P-value distribution (top left)
-    ax1 = plt.subplot(2, 3, 1)
-    plt.hist(all_results['p_value'], bins=20, alpha=0.7, color='skyblue', edgecolor='black')
-    plt.axvline(x=0.05, color='red', linestyle='--', alpha=0.8, label='p=0.05 threshold')
-    plt.xlabel('P-value')
-    plt.ylabel('Frequency')
-    plt.title('Distribution of P-values')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-
-    # 2. Effect size vs P-value (top middle)
-    ax2 = plt.subplot(2, 3, 2)
-    scatter = plt.scatter(all_results['p_value'], all_results['effect_size'],
-                          c=all_results['stat'], cmap='viridis', alpha=0.7, s=60)
-    plt.xlabel('P-value')
-    plt.ylabel('Effect Size')
-    plt.title('Effect Size vs P-value')
-    plt.colorbar(scatter, label='U-statistic')
-    plt.grid(True, alpha=0.3)
-
-    # 3. Sample sizes comparison (top right)
-    ax3 = plt.subplot(2, 3, 3)
-    x = np.arange(len(all_results))
-    width = 0.35
-    plt.bar(x - width / 2, all_results['n_group1'], width, label='High-risk + No family history',
-            color='lightcoral', alpha=0.8)
-    plt.bar(x + width / 2, all_results['n_group2'], width, label='Low-risk group',
-            color='lightblue', alpha=0.8)
-    plt.xlabel('Feature Combination Index')
-    plt.ylabel('Sample Size')
-    plt.title('Sample Sizes by Group')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-
-    # 4. Obesity rates comparison (bottom left)
-    ax4 = plt.subplot(2, 3, 4)
-    x = np.arange(len(all_results))
-    plt.bar(x - width / 2, all_results['mean_group1'], width, label='High-risk + No family history',
-            color='lightcoral', alpha=0.8)
-    plt.bar(x + width / 2, all_results['mean_group2'], width, label='Low-risk group',
-            color='lightblue', alpha=0.8)
-    plt.xlabel('Feature Combination Index')
-    plt.ylabel('Obesity Rate')
-    plt.title('Obesity Rates by Group')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-
-    # 5. Top 10 most significant results (bottom middle)
-    ax5 = plt.subplot(2, 3, 5)
-    top_10 = all_results.head(10)
-    feature_labels = [f"{i + 1}: {', '.join(row['features'])}" for i, (_, row) in enumerate(top_10.iterrows())]
-    y_pos = np.arange(len(feature_labels))
-
-    plt.barh(y_pos, -np.log10(top_10['p_value']), color='gold', alpha=0.8)
-    plt.yticks(y_pos, [f"{i + 1}" for i in range(len(feature_labels))])
-    plt.xlabel('-log10(P-value)')
-    plt.ylabel('Rank')
-    plt.title('Top 10 Most Significant Results')
-    plt.gca().invert_yaxis()
-    plt.grid(True, alpha=0.3)
-
-    # 6. Feature frequency in significant combinations (bottom right)
-    ax6 = plt.subplot(2, 3, 6)
+    # Create a single figure
+    fig, ax = plt.subplots(figsize=figsize)
 
     # Count feature frequencies
     feature_counts = {}
@@ -548,27 +484,27 @@ def plot_mann_whitney_results(results_dict, df=None, save_plots=False, figsize=(
     sorted_features = sorted(feature_counts.items(), key=lambda x: x[1], reverse=True)
     features, counts = zip(*sorted_features)
 
-    plt.bar(range(len(features)), counts, color='lightgreen', alpha=0.8)
-    plt.xlabel('Features')
-    plt.ylabel('Frequency in Significant Combinations')
-    plt.title('Feature Importance')
-    plt.xticks(range(len(features)), features, rotation=45, ha='right')
-    plt.grid(True, alpha=0.3)
+    # Plot
+    ax.bar(range(len(features)), counts, color='lightgreen', alpha=0.8)
+    ax.set_xlabel('Features')
+    ax.set_ylabel('Frequency in Significant Combinations')
+    ax.set_title('Feature Importance')
+    ax.set_xticks(range(len(features)))
+    ax.set_xticklabels(features, rotation=45, ha='right')
+    ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
 
     if save_plots:
-        plt.savefig('mann_whitney_results_overview.png', dpi=300, bbox_inches='tight')
+        plt.savefig('feature_importance_only.png', dpi=300, bbox_inches='tight')
 
     plt.show()
 
-    # Create a detailed results table plot
-    plot_results_table(all_results)
-
-    # Create volcano plot
-    plot_volcano_plot(all_results, save_plots=save_plots)
+    plot_results_table(results_dict['all_results'], top_n=10, save_plots=True)
 
     return fig
+
+
 
 
 def plot_results_table(results_df, top_n=10, save_plots=True):

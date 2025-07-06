@@ -351,7 +351,7 @@ def plot_top_wald_statistics(top_5_significant, save_path=None):
         fontsize=14, fontweight='bold', pad=20)
     ax1.set_ylabel('Wald Test Statistic (χ²)', fontsize=12, fontweight='bold')
     ax1.set_xticks(range(len(feature_combinations)))
-    ax1.set_xticklabels(feature_combinations, rotation=45, ha='right', fontsize=10)
+    ax1.set_xticklabels(feature_combinations, rotation=45, ha='right', fontsize=15)
     ax1.grid(axis='y', alpha=0.3, linestyle='--')
 
     # Add value labels on bars
