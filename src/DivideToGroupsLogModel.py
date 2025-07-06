@@ -436,30 +436,3 @@ def plot_comparison_with_base(top_5_significant, save_path=None):
     plt.show()
 
 
-# Usage example:
-print("To create the bar graphs after running your analysis:")
-print("\n# Run your analysis first:")
-print("results, base_model, top_5_significant = evaluate_feature_subgroups(df)")
-print("\n# Then create the plots:")
-print("plot_top_wald_statistics(top_5_significant)")
-print("plot_comparison_with_base(top_5_significant)")
-print("\n# To save the plots:")
-print("plot_top_wald_statistics(top_5_significant, 'wald_statistics.png')")
-print("plot_comparison_with_base(top_5_significant, 'comparison_plot.png')")
-
-
-
-# Example usage:
-print("To run the analysis, call:")
-print("results, base_model, top_5_significant = evaluate_feature_subgroups(df)")
-print("\nMake sure your dataframe 'df' contains:")
-print("- 'family_history_with_overweight' column")
-print("- 'is_obese' column (target variable)")
-print("- Other feature columns to test")
-print("\nThe function now returns:")
-print("- results: all combinations tested")
-print("- base_model: the baseline logistic regression model")
-print("- top_5_significant: the 5 most statistically significant combinations")
-print("\nEach result now includes:")
-print("- 'base_p_value': p-value of the base feature")
-print("- 'combo_better_than_base': True if combo p-value < base p-value")
