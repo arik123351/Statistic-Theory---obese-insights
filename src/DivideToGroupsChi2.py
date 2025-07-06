@@ -1,245 +1,133 @@
 import pandas as pd
-from sklearn.feature_selection import chi2 as chi2_1
+from sklearn.feature_selection import chi2
 from sklearn.preprocessing import MinMaxScaler
-from itertools import combinations
-from sklearn.model_selection import train_test_split
-from scipy.stats import chi2 as chi2_2
 from itertools import combinations
 import numpy as np
 
-# Assuming df is already loaded and cleaned
 
-def chi2_best_subgroup_with_the_best_8_cols(df):
+def chi2_best_combinations_excluding_weight_family(df, max_features=3):
 
-    # Select and encode features
-    cols = ['SCC', 'family_history_with_overweight', 'MTRANS_Walking', 'FAVC', 'FAF', 'Age', 'CAEC', 'FCVC']
-    X = df[cols]
+    del_col = ['NObeyesdad_Overweight_Level_II', 'NObeyesdad_Overweight_Level_I', 'NObeyesdad_Obesity_Type_III',
+               'NObeyesdad_Obesity_Type_II', 'NObeyesdad_Obesity_Type_I', 'NObeyesdad_Normal_Weight',
+               'NObeyesdad_Insufficient_Weight', 'Weight', 'is_obese']
+    # Available features (excluding Weight and family_history_with_overweight)
+    available_features = [col for col in df.columns
+                          if col not in del_col + ['family_history_with_overweight']]
+
+    print("🔍 Available features for combination:")
+    for i, feat in enumerate(available_features, 1):
+        print(f"  {i}. {feat}")
+
+    # Prepare target variable
     y = df['is_obese']
 
-    # One-hot encode all features (chi2 requires non-negative values)
-    X_encoded = pd.get_dummies(X, drop_first=True)
+    # Store results for all combinations
+    all_results = []
 
-    # Scale to [0, 1] (needed for numeric columns with chi2)
-    X_scaled = MinMaxScaler().fit_transform(X_encoded)
-    X_scaled_df = pd.DataFrame(X_scaled, columns=X_encoded.columns)
+    # Test combinations of different sizes
+    for combo_size in range(1, min(max_features + 1, len(available_features) + 1)):
+        print(f"\n📊 Testing combinations of {combo_size} feature(s)...")
 
-    # Baseline Chi2 for 'family_history_with_overweight'
-    baseline_cols = [col for col in X_encoded.columns if 'family_history_with_overweight' in col]
-    chi2_scores, _ = chi2_1(X_scaled_df[baseline_cols], y)
-    chi2_baseline = chi2_scores.sum()
+        combo_results = []
 
-    print("🎯 Baseline Chi2 (family_history_with_overweight):", chi2_baseline)
-
-    # Try combinations of 2+ features excluding the baseline
-    feature_list = [col for col in X_encoded.columns if col not in baseline_cols]
-    results = []
-
-    for r in range(1,4):
-        for combo in combinations(feature_list, r):
-            chi2_score = chi2_1(X_scaled_df[list(combo)], y)[0].sum()
-            if chi2_score > chi2_baseline:
-                results.append((combo, chi2_score))
-
-    # Top 5 combinations
-    results = sorted(results, key=lambda x: x[1], reverse=True)[:5]
-
-    print("\n Top 5 Feature Combinations with Higher Chi2 than 'family_history_with_overweight':")
-    for i, (combo, score) in enumerate(results, 1):
-        print(f"{i}. {combo} => Chi2: {score:.4f}")
-
-    return results
-
-
-
-
-from sklearn.linear_model import LogisticRegression
-from scipy import stats
-
-
-def wald_best_subgroup_with_the_best_8_cols(df):
-    def wald_test(model, X_train):
-        coef = model.coef_[0]
-        X_array = np.array(X_train, dtype=np.float64)
-        y_pred_proba = model.predict_proba(X_train)[:, 1]
-        y_pred_proba = np.clip(y_pred_proba, 1e-8, 1 - 1e-8)
-
-        weights = y_pred_proba * (1 - y_pred_proba)
-        W = np.diag(weights)
-        H = X_array.T @ W @ X_array
-
-        if np.linalg.cond(H) > 1e12:
-            H += np.eye(H.shape[0]) * 1e-8
-
-        try:
-            cov_matrix = np.linalg.inv(H)
-            std_errors = np.sqrt(np.diag(cov_matrix))
-        except np.linalg.LinAlgError:
-            n_samples = X_array.shape[0]
-            std_errors = np.sqrt(np.abs(coef) / n_samples + 1e-8)
-
-        std_errors = np.maximum(std_errors, 1e-8)
-        z_scores = coef / std_errors
-
-        # Use survival function for better numerical precision with very small p-values
-        p_values = 2 * stats.norm.sf(np.abs(z_scores))
-
-        # Set minimum p-value threshold to avoid numerical issues
-        min_p_threshold = 1e-300
-        p_values = np.maximum(p_values, min_p_threshold)
-
-        return p_values, z_scores, std_errors
-
-    def format_p_value(p_val):
-        """Format p-values for better readability"""
-        if p_val < 1e-10:
-            return f"{p_val:.2e}"
-        else:
-            return f"{p_val:.6f}"
-
-    def get_significance_tier(p_val):
-        """Categorize p-values into significance tiers"""
-        if p_val < 1e-10:
-            return "extremely_significant"
-        elif p_val < 0.001:
-            return "highly_significant"
-        elif p_val < 0.01:
-            return "very_significant"
-        elif p_val < 0.05:
-            return "significant"
-        else:
-            return "not_significant"
-
-    cols = ['SCC', 'family_history_with_overweight', 'MTRANS_Walking', 'FAVC', 'FAF', 'Age', 'CAEC', 'FCVC']
-    X = df[cols]
-    y = df['is_obese']
-    X_encoded = pd.get_dummies(X, drop_first=True)
-
-    # Baseline
-    baseline_cols = [col for col in X_encoded.columns if 'family_history_with_overweight' in col]
-    X_base = X_encoded[baseline_cols]
-    X_train, _, y_train, _ = train_test_split(X_base, y, test_size=0.2, random_state=0)
-
-    baseline_model = LogisticRegression(max_iter=1000)
-    baseline_model.fit(X_train, y_train)
-
-    baseline_p_values, baseline_z_scores, _ = wald_test(baseline_model, X_train)
-    baseline_min_p = float(np.min(baseline_p_values))
-    baseline_tier = get_significance_tier(baseline_min_p)
-
-    print(f"\n🎯 Baseline Feature: {baseline_cols}")
-    for i, col in enumerate(baseline_cols):
-        p_formatted = format_p_value(baseline_p_values[i])
-        print(f"   {col}: p = {p_formatted}, z = {baseline_z_scores[i]:.3f}")
-    print(f"Baseline Min p-value: {format_p_value(baseline_min_p)} ({baseline_tier})")
-
-    # Test combinations
-    feature_list = [col for col in X_encoded.columns if col not in baseline_cols]
-    results = []
-
-    for r in range(1, 4):
-        for combo in combinations(feature_list, r):
+        for combo in combinations(available_features, combo_size):
             try:
-                X_sub = X_encoded[list(combo)]
-                X_train, _, y_train, _ = train_test_split(X_sub, y, test_size=0.2, random_state=0)
+                # Select features for this combination
+                X = df[list(combo)]
 
-                model = LogisticRegression(max_iter=1000)
-                model.fit(X_train, y_train)
+                # One-hot encode categorical features
+                X_encoded = pd.get_dummies(X, drop_first=True)
 
-                p_values, z_scores, _ = wald_test(model, X_train)
-                min_p = float(np.min(p_values))
+                # Handle case where all features are categorical and become binary
+                if X_encoded.shape[1] == 0:
+                    continue
 
-                print(f'Combo: {combo}')
-                print(f'p_values: {[format_p_value(p) for p in p_values]}')
-                print(f'min_p: {format_p_value(min_p)}')
-                print(f'Significance tier: {get_significance_tier(min_p)}')
-                print('---')
+                # Scale to [0, 1] for chi2 (requires non-negative values)
+                scaler = MinMaxScaler()
+                X_scaled = scaler.fit_transform(X_encoded)
 
-                # Modified comparison logic
-                # Instead of strict numerical comparison, use significance tiers
-                combo_tier = get_significance_tier(min_p)
+                # Calculate Chi2 score
+                chi2_scores, p_values = chi2(X_scaled, y)
+                total_chi2 = chi2_scores.sum()
 
-                # Consider a combination "better" if:
-                # 1. It has a lower p-value (traditional approach), OR
-                # 2. It's in the same extreme significance tier but has more significant features, OR
-                # 3. It's in the same tier but has better average significance
-                avg_p = float(np.mean(p_values))
-                n_significant = int(np.sum(p_values < 0.05))
-
-                # Determine if this combo is "better" than baseline
-                if baseline_tier == "extremely_significant" and combo_tier == "extremely_significant":
-                    # Both are extremely significant, compare by other metrics
-                    better_than_baseline = (avg_p < np.mean(baseline_p_values)) or (n_significant > 0)
-                else:
-                    # Traditional p-value comparison
-                    better_than_baseline = min_p < baseline_min_p
-
-                results.append({
-                    'combo': combo,
-                    'min_p_value': min_p,
-                    'avg_p_value': avg_p,
-                    'n_significant': n_significant,
-                    'better_than_baseline': better_than_baseline,
-                    'significance_tier': combo_tier,
-                    'p_values': dict(zip(combo, p_values)),
-                    'z_scores': dict(zip(combo, z_scores)),
+                # Store results
+                combo_results.append({
+                    'features': combo,
+                    'chi2_score': total_chi2,
+                    'feature_count': len(combo),
+                    'encoded_features': list(X_encoded.columns),
+                    'avg_chi2_per_feature': total_chi2 / len(combo)
                 })
+
             except Exception as e:
-                print(f"Error with combo {combo}: {e}")
+                print(f"⚠️  Error with combination {combo}: {e}")
                 continue
 
-    # Sort by significance tier first, then by p-value
-    tier_order = {"extremely_significant": 0, "highly_significant": 1, "very_significant": 2, "significant": 3,
-                  "not_significant": 4}
-    results.sort(key=lambda x: (tier_order.get(x['significance_tier'], 5), x['min_p_value']))
+        # Sort by chi2 score for this combination size
+        combo_results.sort(key=lambda x: x['chi2_score'], reverse=True)
 
-    # Get results that are potentially interesting
-    if baseline_tier == "extremely_significant":
-        # If baseline is extremely significant, show all extremely significant results
-        interesting_results = [r for r in results if r['significance_tier'] == "extremely_significant"][:10]
-    else:
-        # Traditional approach for less extreme baselines
-        interesting_results = [r for r in results if r['min_p_value'] < baseline_min_p][:10]
+        # Show top 3 for this combination size
+        print(f"\n🏆 Top 3 combinations with {combo_size} feature(s):")
+        for i, result in enumerate(combo_results[:3], 1):
+            print(f"  {i}. {result['features']}")
+            print(f"     Chi2: {result['chi2_score']:.4f} | Avg per feature: {result['avg_chi2_per_feature']:.4f}")
 
-    print(f"\n📊 Top Results (Baseline tier: {baseline_tier}):")
-    if not interesting_results:
-        print("   No combinations found in the same or better significance tier.")
-        # Show top 5 overall results
-        print("\n   Top 5 overall results:")
-        for i, res in enumerate(results[:5]):
-            combo_str = ', '.join(res['combo'])
-            print(
-                f"{i + 1}. ({combo_str}) → p = {format_p_value(res['min_p_value'])} ({res['significance_tier']}) | significant: {res['n_significant']}/{len(res['combo'])}")
-    else:
-        for i, res in enumerate(interesting_results):
-            combo_str = ', '.join(res['combo'])
-            better_indicator = "✓" if res['better_than_baseline'] else "="
-            print(
-                f"{i + 1}. {better_indicator} ({combo_str}) → p = {format_p_value(res['min_p_value'])} ({res['significance_tier']}) | significant: {res['n_significant']}/{len(res['combo'])}")
+        all_results.extend(combo_results)
 
-    print(f"\n📈 Summary:")
-    print(f"   ➤ Total combinations tested: {len(results)}")
-    print(f"   ➤ Baseline significance tier: {baseline_tier}")
+    # Sort all results by chi2 score
+    all_results.sort(key=lambda x: x['chi2_score'], reverse=True)
 
-    # Count by significance tiers
-    tier_counts = {}
-    for tier in ["extremely_significant", "highly_significant", "very_significant", "significant", "not_significant"]:
-        count = sum(1 for r in results if r['significance_tier'] == tier)
-        if count > 0:
-            tier_counts[tier] = count
+    print(f"\n🎯 OVERALL TOP 10 FEATURE COMBINATIONS:")
+    print("=" * 80)
 
-    print(f"   ➤ Results by significance tier:")
-    for tier, count in tier_counts.items():
-        print(f"      - {tier.replace('_', ' ').title()}: {count}")
+    for i, result in enumerate(all_results[:10], 1):
+        print(f"{i:2d}. Features: {result['features']}")
+        print(f"    Chi2 Score: {result['chi2_score']:.4f}")
+        print(f"    Feature Count: {result['feature_count']}")
+        print(f"    Avg Chi2/Feature: {result['avg_chi2_per_feature']:.4f}")
+        print(f"    Encoded as: {result['encoded_features']}")
+        print("-" * 60)
 
-    return {
-        'baseline': {
-            'features': baseline_cols,
-            'min_p_value': baseline_min_p,
-            'significance_tier': baseline_tier,
-            'p_values': baseline_p_values,
-            'z_scores': baseline_z_scores
-        },
-        'best_combinations': results[:10],
-        'tier_counts': tier_counts,
-        'total_tested_combinations': len(results)
-    }
+    return all_results
+
+
+def compare_combinations_detailed(df, top_combinations=5):
+    """
+    Detailed comparison of top feature combinations with statistical analysis
+    """
+
+    results = chi2_best_combinations_excluding_weight_family(df)
+
+    print(f"\n📈 DETAILED ANALYSIS OF TOP {top_combinations} COMBINATIONS:")
+    print("=" * 90)
+
+    for i, result in enumerate(results[:top_combinations], 1):
+        print(f"\n🔍 COMBINATION #{i}: {result['features']}")
+
+        # Get the actual data for this combination
+        X = df[list(result['features'])]
+        y = df['is_obese']
+
+        # Encode and scale
+        X_encoded = pd.get_dummies(X, drop_first=True)
+        scaler = MinMaxScaler()
+        X_scaled = scaler.fit_transform(X_encoded)
+
+        # Calculate individual chi2 scores
+        chi2_scores, p_values = chi2(X_scaled, y)
+
+        print(f"   Overall Chi2: {result['chi2_score']:.4f}")
+        print(f"   Features: {len(result['features'])}")
+        print(f"   Efficiency (Chi2/Feature): {result['avg_chi2_per_feature']:.4f}")
+
+        print(f"   Individual feature contributions:")
+        for j, (feature, score, p_val) in enumerate(zip(X_encoded.columns, chi2_scores, p_values)):
+            print(f"     - {feature}: Chi2={score:.4f}, p-value={p_val:.4f}")
+
+        print("-" * 60)
+
+    return results[:top_combinations]
+
+# Usage example:
+# results = chi2_best_combinations_excluding_weight_family(df, max_features=4)
+# detailed_results = compare_combinations_detailed(df, top_combinations=5)
