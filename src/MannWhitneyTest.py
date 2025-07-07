@@ -555,9 +555,9 @@ def plot_results_table(results_df, top_n=10, save_plots=True):
             else:
                 table[(i, j)].set_facecolor('white')
 
-    plt.title(f'Top {top_n} Most Significant Feature Combinations\n'
-              'High-risk + No Family History vs Low-risk Group',
-              fontsize=14, fontweight='bold', pad=20)
+    # plt.title(f'Top {top_n} Most Significant Feature Combinations\n'
+    #           'High-risk + No Family History vs Low-risk Group',
+    #           fontsize=14, fontweight='bold', pad=20)
 
     if save_plots:
         plt.savefig('mann_whitney_results_table_for_two_symmetric_groups.svg', format="svg", dpi=300, bbox_inches='tight')

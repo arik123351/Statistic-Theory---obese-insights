@@ -11,9 +11,9 @@ df = CleanData()
 categorical_cols = [col for col in df.columns if df[col].nunique() <= 30 and col != "is_obese"]
 continuous_cols = [col for col in df.columns if df[col].nunique() > 30 and col != "is_obese"]
 
-# for col in continuous_cols:
-#     check_normality_qq(df[col])
-#     print(check_normality_shapiro_wilks(df[col]))
+for col in continuous_cols:
+    check_normality_qq(df[col], title=col)
+    print(check_normality_shapiro_wilks(df[col], title=col))
 #
 # results = chi2_best_combinations_excluding_weight_family(df, max_features=4)
 # detailed_results = compare_combinations_detailed(df, top_combinations=3)
