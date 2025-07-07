@@ -456,7 +456,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-def plot_mann_whitney_results(results_dict, df=None, save_plots=False, figsize=(12, 8)):
+def plot_mann_whitney_results(results_dict, df=None, save_plots=True, figsize=(12, 8)):
     import matplotlib.pyplot as plt
     import seaborn as sns
 
@@ -496,7 +496,7 @@ def plot_mann_whitney_results(results_dict, df=None, save_plots=False, figsize=(
     plt.tight_layout()
 
     if save_plots:
-        plt.savefig('feature_importance_only.png', dpi=300, bbox_inches='tight')
+        plt.savefig('Frequency_in_Significant_Combinations.svg',format = "svg", dpi=300, bbox_inches='tight')
 
     plt.show()
 
@@ -560,7 +560,7 @@ def plot_results_table(results_df, top_n=10, save_plots=True):
               fontsize=14, fontweight='bold', pad=20)
 
     if save_plots:
-        plt.savefig('mann_whitney_results_table_for_two_symmetric_groups.png', dpi=300, bbox_inches='tight')
+        plt.savefig('mann_whitney_results_table_for_two_symmetric_groups.svg', format="svg", dpi=300, bbox_inches='tight')
 
     plt.show()
 

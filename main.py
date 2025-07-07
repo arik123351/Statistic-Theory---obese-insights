@@ -4,6 +4,7 @@ from src.CheckNormal import check_normality_qq, check_normality_shapiro_wilks
 from src.DivideToGroupsChi2 import chi2_best_combinations_excluding_weight_family, compare_combinations_detailed
 from src.DivideToGroupsLogModel import evaluate_feature_subgroups, plot_top_wald_statistics, plot_comparison_with_base
 from src.MannWhitneyTest import mann_whitney_selected_features, print_all_significant_groups, plot_mann_whitney_results, mann_whitney_for_family_not_obese, mann_whitney_for_family_obese
+from src.GenderTests import test_gender_vs_obesity, test_family_history_vs_obesity, test_transport_vs_obesity, logistic_regression_obesity
 
 df = CleanData()
 
@@ -38,5 +39,14 @@ for prec in range(50, 100, 10):
 results = mann_whitney_for_family_obese(df, selected_features=selected)
 plot_mann_whitney_results(results, df)
 
+males_df = df[df['Gender'] == 1]
+elder_df = df[df['Age'] >= 40]
+print(males_df.head())
+print(males_df.nunique())
 
+# Run the tests
+test_gender_vs_obesity(elder_df)
+test_family_history_vs_obesity(males_df)
+test_transport_vs_obesity(males_df)
+logistic_regression_obesity(males_df)
 
