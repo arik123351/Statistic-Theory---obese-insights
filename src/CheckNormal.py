@@ -6,8 +6,9 @@ import scipy.stats as stats
 def check_normality_qq(data, title=''):
     plt.figure(figsize=(6, 6))
     stats.probplot(data, dist="norm", plot=plt)
-    plt.title('Q-Q Plot ' + title)
+    plt.title(title + ' Q-Q Plot', size = 20)
     plt.grid(True)
+    plt.savefig(title + ' Q-Q Plot.svg', format="svg", dpi=300, bbox_inches='tight')
     plt.show()
 
 

@@ -312,54 +312,54 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+import matplotlib.pyplot as plt
+import numpy as np
+import matplotlib as mpl
+
+
 def plot_top_wald_statistics(top_5_significant, save_path=None):
     """
-    Create a bar graph of the top 5 combinations with highest Wald statistics
-
-    Parameters:
-    top_5_significant: list of dictionaries from evaluate_feature_subgroups function
-    save_path: optional path to save the figure
+    Plot top 5 feature combinations by Wald statistic with horizontal bars.
+    Color intensity encodes significance (darker = more significant).
     """
 
-    # Extract data for plotting
+    # Extract data
     feature_combinations = []
     wald_stats = []
     p_values = []
 
     for i, result in enumerate(top_5_significant):
-        # Create short labels for the combinations
-        features_str = ', '.join(result['additional_features'][:3])  # Show first 2 features
-        # if len(result['additional_features']) > 2:
-        #     features_str += f" (+{len(result['additional_features']) - 2} more)"
-
-        feature_combinations.append(f"Combo {i + 1}:\n{features_str}")
+        features_str = ', '.join(result['additional_features'][:3])
+        label = f"Combo {i + 1}: {features_str}"
+        feature_combinations.append(label)
         wald_stats.append(result['wald_statistic'])
         p_values.append(result['wald_p_value'])
 
-    # Create the figure with two subplots
-    fig, ax1 = plt.subplots(figsize=(12, 10))
+    # Normalize p-values for color mapping (invert to make lower p darker)
+    norm = mpl.colors.Normalize(vmin=min(p_values), vmax=max(p_values))
+    cmap = plt.cm.viridis_r  # reversed so lower p is darker
+    colors = [cmap(norm(p)) for p in p_values]
 
-    # Colors for bars (gradient from dark to light blue)
-    colors = plt.cm.Blues(np.linspace(0.8, 0.4, len(wald_stats)))
+    fig, ax = plt.subplots(figsize=(10, 6))
+    y_pos = np.arange(len(feature_combinations))
 
-    # Top subplot: Wald Statistics
-    bars1 = ax1.bar(range(len(wald_stats)), wald_stats, color=colors,
-                    edgecolor='navy', linewidth=1.5, alpha=0.8)
+    bars = ax.barh(y_pos, wald_stats, color=colors, edgecolor='black')
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(feature_combinations, fontsize=11)
+    ax.invert_yaxis()
 
-    ax1.set_title(
-        'Top 5 Feature Combinations by Wald Test Statistic\n(Higher values indicate stronger statistical significance)',
-        fontsize=14, fontweight='bold', pad=20)
-    ax1.set_ylabel('Wald Test Statistic (χ²)', fontsize=12, fontweight='bold')
-    ax1.set_xticks(range(len(feature_combinations)))
-    ax1.set_xticklabels(feature_combinations, rotation=45, ha='right', fontsize=15)
-    ax1.grid(axis='y', alpha=0.3, linestyle='--')
+    ax.set_xlabel('Wald Test Statistic (χ²)', fontsize=12, fontweight='bold')
+    ax.set_title('Top 5 Feature Combinations by Wald Statistic',
+                 fontsize=14, fontweight='bold', pad=15)
 
-    # Add value labels on bars
-    for i, (bar, stat) in enumerate(zip(bars1, wald_stats)):
-        height = bar.get_height()
-        ax1.text(bar.get_x() + bar.get_width() / 2., height + max(wald_stats) * 0.01,
-                 f'{stat:.2f}', ha='center', va='bottom', fontweight='bold', fontsize=10)
+    # Add value annotations
+    for bar, stat, pval in zip(bars, wald_stats, p_values):
+        width = bar.get_width()
+        ax.text(width + 0.5, bar.get_y() + bar.get_height()/2,
+                f'{stat:.2f}\n(p={pval:.1e})',
+                va='center', ha='left', fontsize=9, color='black')
 
+    ax.grid(axis='x', linestyle='--', alpha=0.4)
     plt.tight_layout()
 
     if save_path:
@@ -368,20 +368,8 @@ def plot_top_wald_statistics(top_5_significant, save_path=None):
 
     plt.show()
 
-    # Print summary statistics
-    print("\n" + "=" * 60)
-    print("SUMMARY OF TOP 5 COMBINATIONS")
-    print("=" * 60)
-    for i, result in enumerate(top_5_significant):
-        print(f"{i + 1}. Features: {result['additional_features']}")
-        print(f"   Wald χ²: {result['wald_statistic']:.4f}")
-        print(f"   P-value: {result['wald_p_value']:.2e}")
-        print(f"   AUC Improvement: {result['auc_improvement']:+.4f}")
-        print(f"   Significant: {'Yes' if result['significant_improvement'] else 'No'}")
-        print()
 
-
-def plot_comparison_with_base(top_5_significant, save_path=None):
+def plot_comparison_with_base(top_5_significant, save_path='top_wald_statistics.svg'):
     """
     Create a comparison plot showing Wald statistics vs base model chi-square equivalent
     """
@@ -407,12 +395,12 @@ def plot_comparison_with_base(top_5_significant, save_path=None):
                    color='lightcoral', alpha=0.8, edgecolor='darkred')
 
     ax.set_title(
-        'Wald Test Statistics: Feature Combinations vs Base Model\n(Higher values indicate stronger statistical significance)',
-        fontsize=14, fontweight='bold', pad=20)
-    ax.set_ylabel('Test Statistic (χ²)', fontsize=12, fontweight='bold')
-    ax.set_xlabel('Feature Combinations (Ranked by Wald Statistic)', fontsize=12, fontweight='bold')
+        'Wald Test Statistics: Feature Combinations vs Base Model',
+        fontsize=23, pad=20)
+    ax.set_ylabel('Wald Test Statistic (χ²)', fontsize=20)
+    # ax.set_xlabel('Feature Combinations (Ranked by Wald Statistic)', fontsize=12, fontweight='bold')
     ax.set_xticks(x)
-    ax.set_xticklabels(combo_names)
+    ax.set_xticklabels(combo_names, fontsize = 17)
     ax.legend()
     ax.grid(axis='y', alpha=0.3, linestyle='--')
 
@@ -420,17 +408,17 @@ def plot_comparison_with_base(top_5_significant, save_path=None):
     for bar in bars1:
         height = bar.get_height()
         ax.text(bar.get_x() + bar.get_width() / 2., height + max(combo_chi_squares) * 0.01,
-                f'{height:.2f}', ha='center', va='bottom', fontweight='bold', fontsize=9)
+                f'{height:.2f}', ha='center', va='bottom', fontsize=16)
 
     for bar in bars2:
         height = bar.get_height()
         ax.text(bar.get_x() + bar.get_width() / 2., height + max(base_chi_squares) * 0.01,
-                f'{height:.2f}', ha='center', va='bottom', fontweight='bold', fontsize=9)
+                f'{height:.2f}', ha='center', va='bottom', fontsize=16)
 
     plt.tight_layout()
 
     if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.savefig(save_path, format="svg", dpi=300, bbox_inches='tight')
         print(f"Comparison plot saved to: {save_path}")
 
     plt.show()

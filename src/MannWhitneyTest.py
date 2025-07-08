@@ -273,22 +273,24 @@ def mann_whitney_for_family_not_obese(df,
 
 
 
-def mann_whitney_for_family_obese(df,
-                                   target='is_obese',
-                                   feature_to_split='family_history_with_overweight',
-                                   selected_features=['FAVC', 'FCVC', 'NCP', 'CAEC', 'SMOKE', 'CH2O',
-                                                        'SCC', 'FAF', 'TUE', 'CALC', 'MTRANS_Walking',
-                                                        'MTRANS_Public_Transportation', 'MTRANS_Motorbike',
-                                                        'MTRANS_Bike', 'MTRANS_Automobile'],
-                                   max_features=4,
-                                   p_threshold=0.05):
+
+def  mann_whitney_for_family_obese(df,
+                                      target='is_obese',
+                                      feature_to_split='family_history_with_overweight',
+                                      selected_features=['FAVC', 'FCVC', 'NCP', 'CAEC', 'SMOKE', 'CH2O',
+                                                         'SCC', 'FAF', 'TUE', 'CALC', 'MTRANS_Walking',
+                                                         'MTRANS_Public_Transportation', 'MTRANS_Motorbike',
+                                                         'MTRANS_Bike', 'MTRANS_Automobile'],
+                                      max_features=4,
+                                      p_threshold=0.05,
+                                      percentile=50):
     if selected_features is None:
         raise ValueError("You must provide a list of selected features.")
 
     results = []
 
-    # Median split value for family_history_with_overweight
-    median_val = df[feature_to_split].median()
+    # Percentile split value for family_history_with_overweight
+    percentile_val = df[feature_to_split].quantile(percentile / 100)
 
     # Define feature types for proper handling
     binary_features = ['Gender', 'FAVC', 'SMOKE', 'SCC',
@@ -320,14 +322,16 @@ def mann_whitney_for_family_obese(df,
                         high_risk_conditions.append(subset_df[feat] == 0)
                         low_risk_conditions.append(subset_df[feat] == 1)
                 elif feat in continuous_features:
-                    # For continuous: high risk vs low risk
-                    feat_median = subset_df[feat].median()
+                    # For continuous: high risk vs low risk using percentile
+                    feat_percentile = subset_df[feat].quantile(percentile / 100)
+                    lower = subset_df[feat].quantile(1 - percentile / 100)
+                    # print(f'feat_percentile = {feat_percentile} / max = {max(subset_df[feat])}')
                     if feat in ['NCP', 'TUE', 'CAEC', 'CALC']:
-                        high_risk_conditions.append(subset_df[feat] >= feat_median)
-                        low_risk_conditions.append(subset_df[feat] < feat_median)
+                        high_risk_conditions.append(subset_df[feat] >= feat_percentile)
+                        low_risk_conditions.append(subset_df[feat] < feat_percentile)
                     else:
-                        high_risk_conditions.append(subset_df[feat] < feat_median)
-                        low_risk_conditions.append(subset_df[feat] >= feat_median)
+                        high_risk_conditions.append(subset_df[feat] < lower)
+                        low_risk_conditions.append(subset_df[feat] >= lower)
 
             # Combine conditions (all must be true for each risk group)
             if len(high_risk_conditions) == 1:
@@ -376,15 +380,23 @@ def mann_whitney_for_family_obese(df,
                 continue
 
     results_df = pd.DataFrame(results)
-
     if results_df.empty:
-        print("No significant combinations found! for if high_risk_group + with no family_history_with_overweight > family_history_with_overweight")
+        print(
+            "No significant combinations found! for if no family_history_with_overweight + high risk > family_history_with_overweight")
         return {
             'all_results': results_df,
             'top_5_significant': pd.DataFrame(),
             'least_5_significant': pd.DataFrame()
         }
 
+    # Sort by p-value and return top and least significant results
+    results_df = results_df.sort_values('p_value')
+
+    return {
+        'all_results': results_df,
+        'top_5_significant': results_df.head(5),
+        'least_5_significant': results_df.tail(5)
+    }
     # Sort by p-value (ascending for most significant)
     results_df = results_df.sort_values('p_value')
 
@@ -399,7 +411,6 @@ def mann_whitney_for_family_obese(df,
         'top_5_significant': top_5_significant,
         'least_5_significant': least_5_significant
     }
-
 
 
 
@@ -486,11 +497,11 @@ def plot_mann_whitney_results(results_dict, df=None, save_plots=True, figsize=(1
 
     # Plot
     ax.bar(range(len(features)), counts, color='lightgreen', alpha=0.8)
-    ax.set_xlabel('Features')
-    ax.set_ylabel('Frequency in Significant Combinations')
-    ax.set_title('Feature Importance')
+    # ax.set_xlabel('Features',)
+    # ax.set_ylabel('Frequency in Significant Combinations')
+    ax.set_title('Feature Importance', size= 20)
     ax.set_xticks(range(len(features)))
-    ax.set_xticklabels(features, rotation=45, ha='right')
+    ax.set_xticklabels(features, rotation=45, ha='right', fontsize=15)
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
