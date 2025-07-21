@@ -9,9 +9,8 @@
       <change beforePath="$PROJECT_DIR$/Frequency_in_Significant_Combinations.svg" beforeDir="false" afterPath="$PROJECT_DIR$/Frequency_in_Significant_Combinations.svg" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mann_whitney_results_table_for_two_symmetric_groups.svg" beforeDir="false" afterPath="$PROJECT_DIR$/mann_whitney_results_table_for_two_symmetric_groups.svg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/CheckNormal.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/CheckNormal.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/DivideToGroupsLogModel.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/DivideToGroupsLogModel.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/MannWhitneyTest.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/MannWhitneyTest.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/top_wald_statistics.svg" beforeDir="false" afterPath="$PROJECT_DIR$/top_wald_statistics.svg" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

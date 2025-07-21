@@ -212,8 +212,11 @@ def mann_whitney_for_family_not_obese(df,
             # Group1: High-risk group with no family history, Group2: Low-risk group
             group1 = subset_df[subset_df[feature_to_split] == 0][target]
             group2 = low_risk_group[low_risk_group[feature_to_split] == 1][target]
+            # group2 = low_risk_group[target]
 
             if len(group1) < 5 or len(group2) < 5:
+                # print(f'group1: {group1.value_counts()} , {list(feats)}')
+                # print(f'group2: {group2.value_counts()}, {list(feats)}')
                 continue
 
             # stat, p = mannwhitneyu(group1, group2, alternative='greater')
@@ -353,9 +356,17 @@ def  mann_whitney_for_family_obese(df,
 
             # Group1: High-risk group with no family history, Group2: Low-risk group
             group1 = high_risk_group[high_risk_group[feature_to_split] == 0][target]
+            # group1 = high_risk_group[target]
             group2 = subset_df[subset_df[feature_to_split] == 1][target]
 
+            # print(f'group1: {high_risk_group[high_risk_group[feature_to_split] == 0][target].value_counts()} , {list(feats)}')
+            # print(f'group2: {group2.value_counts()}, {list(feats)}')
+            # print(f'group1: {group1.value_counts()} , {list(feats)}')
+            # print(f'group2: {group2.value_counts()}, {list(feats)}')
+
             if len(group1) < 5 or len(group2) < 5:
+                # print(f'group1: {high_risk_group[high_risk_group[feature_to_split] == 0][target].value_counts()} , {list(feats)}')
+                # print(f'group2: {group2.value_counts()}, {list(feats)}')
                 continue
 
             # stat, p = mannwhitneyu(group1, group2, alternative='greater')
